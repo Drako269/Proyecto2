@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 
 # Importaciones personalizadas
-from hosts_manager import block_website, unblock_website
+from hosts_manager import block_website, unblock_website, normalize_domain
 from db_manager import rule_exists_for_page, get_or_create_blocked_page, create_block_rule
 from config import HOSTS_PATH
 
@@ -29,18 +29,24 @@ class BlockWebsiteFrame(tk.Frame):
         self.controller.show_frame(MenuFrame)
 
     def block_page(self):
-        website = self.entry_website.get().strip()
+        raw_input = self.entry_website.get().strip()
         comment = self.entry_comment.get().strip()
 
-        if not website:
+        if not raw_input:
             messagebox.showwarning("Advertencia", "Por favor ingresa un dominio.")
+            return
+
+        # Limpiar la URL/dominio
+        website = normalize_domain(raw_input)
+        if not website:
+            messagebox.showerror("Error", "Dominio inválido. Por favor ingresa un dominio válido.")
             return
 
         # 1. Bloquear en hosts
         try:
-            blocked_domains = block_website(website)
+            blocked_domains = block_website(website)  # Esta función ya recibe el dominio limpio
             if not blocked_domains:
-                messagebox.showinfo("Información", "Ya existe esta regla de bloqueo.")
+                messagebox.showinfo("Información", "El sitio ya estaba bloqueado.")
                 return
         except PermissionError:
             messagebox.showerror("Error", "Necesitas permisos de administrador para modificar el archivo hosts.")
@@ -56,13 +62,21 @@ class BlockWebsiteFrame(tk.Frame):
                 messagebox.showerror("Error", f"No se pudo registrar {domain} en la base de datos.")
                 continue
 
-            # 3. Verificar si ya existe una regla tipo 'pagina' para este dominio
-            if rule_exists_for_page(page_id):
-                messagebox.showwarning("Advertencia", f"Ya hay una regla de bloqueo para '{domain}'")
+            # 3. Verificar si ya existe una regla idéntica
+            if rule_exists_for_page(page_id, rule_type="pagina"):
+                messagebox.showwarning("Advertencia", f"Ya hay una regla idéntica para '{domain}'")
                 continue
 
             # 4. Crear la regla de bloqueo
-            if not create_block_rule(page_id, rule_type="pagina"):
+            if not create_block_rule(
+                page_id=page_id,
+                rule_type="pagina",
+                fecha_inicio=None,
+                fecha_fin=None,
+                dias_semana=None,
+                hora_inicio=None,
+                hora_fin=None
+            ):
                 messagebox.showerror("Error", f"No se pudo crear la regla de bloqueo para '{domain}'")
 
         messagebox.showinfo("Éxito", f"Páginas bloqueadas:\n{', '.join(blocked_domains)}")

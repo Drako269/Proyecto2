@@ -3,6 +3,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from tkcalendar import DateEntry
+from hosts_manager import normalize_domain
 from db_manager import create_block_rule, rule_exists_for_page, get_or_create_blocked_page
 
 
@@ -129,9 +130,15 @@ class AddRuleFrame(tk.Frame):
         days_str = ",".join(days_selected) if days_selected else None
 
         if rule_type == "pagina":
-            website = self.entry_website.get().strip()
-            if not website:
+            raw_input = self.entry_website.get().strip()
+            if not raw_input:
                 messagebox.showwarning("Advertencia", "Por favor ingresa un dominio.")
+                return
+
+            # Limpiamos el dominio
+            website = normalize_domain(raw_input)
+            if not website:
+                messagebox.showerror("Error", "El dominio ingresado no es válido.")
                 return
 
             page_id = get_or_create_blocked_page(website)

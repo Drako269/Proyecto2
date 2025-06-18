@@ -56,3 +56,18 @@ def unblock_website(website):
     except Exception as e:
         print(f"❌ Error al desbloquear sitio: {e}")
         return []
+    
+def normalize_domain(url):
+    """Limpia una URL y devuelve solo el dominio"""
+    if not url:
+        return None
+    
+    domain = url.strip()
+    
+    # Eliminar protocolos
+    domain = domain.replace("http://", "").replace("https://",  "").replace("www.",  "")
+    
+    # Eliminar subdirectorios, parámetros y fragmentos
+    domain = domain.split("/")[0].split("?")[0].split("#")[0]
+    
+    return domain

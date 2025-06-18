@@ -55,22 +55,20 @@ def update_hosts_based_on_rules():
         start_date = rule[3]
         end_date = rule[4]
         days_of_week = rule[5]
-        hora_inicio = rule[6]
+        hora_inicio = rule[6]  # Esto puede ser None o un objeto datetime.time
         hora_fin = rule[7]
 
-        # Si no está activa, salta esta regla
+        # Si no está activa → saltar
         if not active:
             continue
 
-        # Evaluar condiciones por tipo de bloqueo
         should_block = False
 
-        if tipo_bloqueo == "periodo":
-            # Bloqueo simple por página
+        if tipo_bloqueo == "pagina":
             should_block = True
 
-        elif tipo_bloqueo == "pagina":
-            today = now.date()
+        elif tipo_bloqueo == "periodo":
+            today = current_date
             current_time = now.time()
 
             # Condición de fecha
@@ -84,35 +82,45 @@ def update_hosts_based_on_rules():
 
             # Condición de día de la semana
             day_condition = True
-
             if days_of_week and days_of_week.strip():
-                now = datetime.now()
-                current_day_name = now.strftime("%A").lower()[:3]  # ej: 'friday' → 'fri'
+                current_day_name = now.strftime("%a").lower()[:3]
 
-                # Convertir a español
                 weekday_map = {
                     "mon": "lun", "tue": "mar", "wed": "mie",
                     "thu": "jue", "fri": "vie", "sat": "sab", "sun": "dom"
                 }
                 current_day_name = weekday_map.get(current_day_name, current_day_name)
 
-                allowed_days = [d.strip().lower() for d in days_of_week.split(',') if d.strip()]
-                
+                allowed_days = [day.strip().lower() for day in days_of_week.split(',') if day.strip()]
                 day_condition = current_day_name in allowed_days
-
-                print(f"Dominio: {dominio} | Días permitidos: {allowed_days} | Día actual: {current_day_name}")
-            else:
-                # Si days_of_week es NULL o vacío → aplica cualquier día
-                day_condition = True
 
             # Condición de horario
             time_condition = True
-            if hora_inicio and hora_fin:
-                start_hour, start_minute = map(int, hora_inicio.split(':'))
-                end_hour, end_minute = map(int, hora_fin.split(':'))
-                start_time = time(start_hour, start_minute)
-                end_time = time(end_hour, end_minute)
-                time_condition = start_time <= current_time <= end_time
+            if hora_inicio or hora_fin:
+                try:
+                    # Convertir objetos time a string HH:MM
+                    def time_to_str(t):
+                        return f"{t.hour}:{t.minute:02d}" if t else None
+
+                    hora_inicio_str = time_to_str(hora_inicio)
+                    hora_fin_str = time_to_str(hora_fin)
+
+                    if hora_inicio_str and hora_fin_str:
+                        start_hour, start_minute = map(int, hora_inicio_str.split(':'))
+                        end_hour, end_minute = map(int, hora_fin_str.split(':'))
+
+                        start_time = datetime.combine(today, time(start_hour, start_minute))
+                        end_time = datetime.combine(today, time(end_hour, end_minute))
+
+                        current_datetime = now
+                        time_condition = start_time <= current_datetime <= end_time
+                    else:
+                        # Si hay alguna hora definida, pero no ambas → asumimos que se bloquea todo el día
+                        time_condition = True
+
+                except Exception as e:
+                    print(f"❌ Error al procesar horario para {dominio}: {e}")
+                    time_condition = False
 
             should_block = date_condition and day_condition and time_condition
 
@@ -124,7 +132,7 @@ def update_hosts_based_on_rules():
                 if line_to_add not in new_lines:
                     new_lines.append(line_to_add)
 
-    # Escribir cambios
+    # Escribir cambios en el archivo hosts
     with open(HOSTS_PATH, 'w') as file:
         file.writelines(new_lines)
 
@@ -156,7 +164,6 @@ def start_background_service():
     global stop_thread
     stop_thread = False
 
-    global host_updater_thread
     host_updater_thread = threading.Thread(target=background_host_updater, daemon=True)
     host_updater_thread.start()
     print("✅ Servicio de actualización iniciado")

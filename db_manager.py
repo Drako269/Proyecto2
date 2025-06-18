@@ -62,6 +62,7 @@ def get_or_create_blocked_page(domain):
     try:
         with conn:
             with conn.cursor() as cur:
+                # Verificar si ya existe el dominio
                 cur.execute("""
                     SELECT id_pagina_bloqueada FROM paginas_bloqueadas_unicas 
                     WHERE url_dominio_bloqueado = %s
@@ -84,6 +85,43 @@ def get_or_create_blocked_page(domain):
     finally:
         conn.close()
 
+def rule_exists(page_id, rule_type="pagina",
+                fecha_inicio=None, fecha_fin=None,
+                dias_semana=None, hora_inicio=None, hora_fin=None):
+    """Verifica si ya existe una regla con los mismos parámetros"""
+    conn = connect_db()
+    if not conn:
+        return False
+
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT 1 FROM reglas_bloqueo
+                    WHERE id_pagina_bloqueada_fk = %s
+                      AND tipo_bloqueo = %s
+                      AND COALESCE(fecha_inicio, 'infinity'::date) = COALESCE(%s, 'infinity'::date)
+                      AND COALESCE(fecha_fin, 'infinity'::date) = COALESCE(%s, 'infinity'::date)
+                      AND COALESCE(dias_semana, '') = COALESCE(%s, '')
+                      AND COALESCE(hora_inicio, '00:00') = COALESCE(%s, '00:00')
+                      AND COALESCE(hora_fin, '23:59') = COALESCE(%s, '23:59')
+                    LIMIT 1;
+                """, (
+                    page_id, rule_type,
+                    fecha_inicio, fecha_fin, dias_semana,
+                    hora_inicio, hora_fin
+                ))
+
+                exists = cur.fetchone() is not None
+                print(f"🔍 Regla existente para ID {page_id}: {exists}")
+                return exists
+    except Exception as e:
+        print(f"❌ Error al verificar regla: {e}")
+        return False
+    finally:
+        conn.close()
+
+
 def create_block_rule(page_id, rule_type="pagina",
                       fecha_inicio=None, fecha_fin=None,
                       dias_semana=None, hora_inicio=None, hora_fin=None):
@@ -95,13 +133,56 @@ def create_block_rule(page_id, rule_type="pagina",
     try:
         with conn:
             with conn.cursor() as cur:
+                # Verificar si ya existe una regla idéntica
+                cur.execute("""
+                    SELECT 1 FROM reglas_bloqueo
+                    WHERE id_pagina_bloqueada_fk = %(page_id)s
+                      AND tipo_bloqueo = %(rule_type)s
+                      AND COALESCE(fecha_inicio, 'infinity'::date) = COALESCE(%(fecha_inicio)s::DATE, 'infinity'::date)
+                      AND COALESCE(fecha_fin, 'infinity'::date) = COALESCE(%(fecha_fin)s::DATE, 'infinity'::date)
+                      AND COALESCE(dias_semana, '') = COALESCE(%(dias_semana)s, '')
+                      AND COALESCE(hora_inicio, '00:00'::TIME) = COALESCE(%(hora_inicio)s::TIME, '00:00'::TIME)
+                      AND COALESCE(hora_fin, '23:59'::TIME) = COALESCE(%(hora_fin)s::TIME, '23:59'::TIME)
+                    LIMIT 1;
+                """, {
+                    "page_id": page_id,
+                    "rule_type": rule_type,
+                    "fecha_inicio": fecha_inicio,
+                    "fecha_fin": fecha_fin,
+                    "dias_semana": dias_semana,
+                    "hora_inicio": hora_inicio or None,
+                    "hora_fin": hora_fin or None
+                })
+
+                if cur.fetchone():
+                    print("⚠️ Regla duplicada. No se creará.")
+                    return False
+
+                # Si no existe, crear la nueva regla
                 cur.execute("""
                     INSERT INTO reglas_bloqueo(tipo_bloqueo, fecha_inicio, fecha_fin,
                                             dias_semana, hora_inicio, hora_fin, activo,
                                             id_pagina_bloqueada_fk)
-                    VALUES (%s, %s, %s, %s, %s, %s, TRUE, %s)
-                """, (rule_type, fecha_inicio, fecha_fin,
-                      dias_semana, hora_inicio, hora_fin, page_id))
+                    VALUES (
+                        %(rule_type)s,
+                        %(fecha_inicio)s::DATE,
+                        %(fecha_fin)s::DATE,
+                        %(dias_semana)s,
+                        %(hora_inicio)s::TIME,
+                        %(hora_fin)s::TIME,
+                        TRUE,
+                        %(page_id)s
+                    )
+                """, {
+                    "page_id": page_id,
+                    "rule_type": rule_type,
+                    "fecha_inicio": fecha_inicio,
+                    "fecha_fin": fecha_fin,
+                    "dias_semana": dias_semana,
+                    "hora_inicio": hora_inicio or '00:00',
+                    "hora_fin": hora_fin or '23:59'
+                })
+
                 return cur.rowcount > 0
     except Exception as e:
         print(f"❌ Error al crear regla: {e}")
