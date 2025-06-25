@@ -5,6 +5,7 @@ from tkinter import ttk, messagebox
 from tkcalendar import DateEntry
 from hosts_manager import normalize_domain
 from db_manager import create_block_rule, rule_exists_for_page, get_or_create_blocked_page
+from firewall_manager import block_internet, remove_duplicate_firewall_rules
 
 
 class AddRuleFrame(tk.Frame):
@@ -166,16 +167,17 @@ class AddRuleFrame(tk.Frame):
                 messagebox.showerror("Error", "No se pudo crear la regla.")
 
         elif rule_type == "internet":
-            # Usamos un dominio especial para representar internet completo
+            # No necesitamos dominio → usamos un registro especial
             page_id = get_or_create_blocked_page("internet_global")
             if not page_id:
-                messagebox.showerror("Error", "No se pudo crear la regla para Internet.")
+                messagebox.showerror("Error", "No se pudo registrar la página en la base de datos")
                 return
 
             if rule_exists_for_page(page_id):
                 messagebox.showwarning("Advertencia", "Ya existe una regla idéntica para Internet.")
                 return
 
+            # Guardamos la regla en la BD
             success = create_block_rule(
                 page_id=page_id,
                 rule_type=rule_type,
@@ -187,9 +189,19 @@ class AddRuleFrame(tk.Frame):
             )
 
             if success:
-                messagebox.showinfo("Éxito", "Regla creada para Bloquear Internet")
+                # Llamamos al comando de PowerShell
+                remove_duplicate_firewall_rules()
+                created = block_internet()
+                if created:
+                    messagebox.showinfo("Éxito", "Regla creada para Bloquear Internet")
+                else:
+                    messagebox.showerror("Error", "No se pudo aplicar el bloqueo de Internet")
             else:
-                messagebox.showerror("Error", "No se pudo crear la regla.")
+                messagebox.showerror("Error", "No se pudo guardar la regla en la base de datos")
+
+        else:
+            messagebox.showerror("Error", "Tipo de bloqueo desconocido")
+            return
 
     def _is_valid_time(self, time_str):
         """Valida que el tiempo esté en formato HH:MM"""

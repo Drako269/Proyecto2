@@ -1,9 +1,10 @@
 import threading
-import time
-from datetime import datetime, timedelta
+import time as python_time
+from datetime import datetime, timedelta, time
 import psycopg2
 from config import HOSTS_PATH, REDIRECT_IP
 from db_manager import connect_db
+from firewall_manager import block_internet, unblock_internet, remove_duplicate_firewall_rules
 
 def get_rules_from_db():
     """Obtiene todas las reglas desde la base de datos"""
@@ -47,6 +48,8 @@ def update_hosts_based_on_rules():
         lines = file.readlines()
 
     new_lines = [line for line in lines if not any(rule[0] in line for rule in rules)]
+
+    internet_blocked = False
 
     for rule in rules:
         dominio = rule[0]
@@ -93,6 +96,8 @@ def update_hosts_based_on_rules():
 
                 allowed_days = [day.strip().lower() for day in days_of_week.split(',') if day.strip()]
                 day_condition = current_day_name in allowed_days
+            else:
+                day_condition = True
 
             # Condición de horario
             time_condition = True
@@ -124,13 +129,91 @@ def update_hosts_based_on_rules():
 
             should_block = date_condition and day_condition and time_condition
 
+        elif tipo_bloqueo == "internet":
+            today = current_date
+            date_condition = True
+            if start_date and end_date:
+                date_condition = start_date <= today <= end_date
+            elif start_date:
+                date_condition = today >= start_date
+            elif end_date:
+                date_condition = today <= end_date
+
+            day_condition = True
+            if days_of_week and days_of_week.strip():
+                current_day_name = now.strftime("%a").lower()[:3]
+
+                weekday_map = {
+                    "mon": "lun", "tue": "mar", "wed": "mie",
+                    "thu": "jue", "fri": "vie", "sat": "sab", "sun": "dom"
+                }
+                current_day_name = weekday_map.get(current_day_name, current_day_name)
+
+                allowed_days = [day.strip().lower() for day in days_of_week.split(',') if day.strip()]
+                day_condition = current_day_name in allowed_days
+            else:
+                day_condition = True
+
+            time_condition = True
+            if hora_inicio and hora_fin:
+                def time_to_str(t):
+                    """Convierte datetime.time o str a formato 'HH:MM'"""
+                    if t is None:
+                        return None
+
+                    # Si es objeto time → convertir a cadena
+                    if isinstance(t, time):
+                        return f"{t.hour}:{t.minute:02d}"
+                    # Si ya es cadena → validar formato
+                    if isinstance(t, str):
+                        try:
+                            hh, mm = map(int, t.split(':'))
+                            if 0 <= hh < 24 and 0 <= mm < 60:
+                                return f"{hh}:{mm:02d}"
+                            else:
+                                return None
+                        except:
+                            return None
+
+                        return None
+                try:
+
+                    hora_inicio_str = time_to_str(hora_inicio)
+                    hora_fin_str = time_to_str(hora_fin)
+
+                    if hora_inicio_str and hora_fin_str:
+                        start_hour, start_minute = map(int, hora_inicio_str.split(':'))
+                        end_hour, end_minute = map(int, hora_fin_str.split(':'))
+
+                        start_time = datetime.combine(today, time(start_hour, start_minute))
+                        end_time = datetime.combine(today, time(end_hour, end_minute))
+                        current_datetime = now
+                        time_condition = start_time <= current_datetime <= end_time
+                    else:
+                        time_condition = True  # Si no hay horario definido → aplica todo el día
+                except Exception as e:
+                    print(f"❌ Error al procesar horario: {e}")
+                    time_condition = False
+
+            should_block = date_condition and day_condition and time_condition
+
         # Si cumple todas las condiciones → bloquear
         if should_block:
-            variants = [dominio, f"www.{dominio}"]
-            for variant in variants:
-                line_to_add = f"{REDIRECT_IP} {variant}\n"
-                if line_to_add not in new_lines:
-                    new_lines.append(line_to_add)
+            if tipo_bloqueo == "internet":
+                if not internet_blocked:
+                    remove_duplicate_firewall_rules()
+                    block_internet()
+                    internet_blocked = True
+            else:
+                variants = [dominio, f"www.{dominio}"]
+                for variant in variants:
+                    line_to_add = f"{REDIRECT_IP} {variant}\n"
+                    if line_to_add not in new_lines:
+                        new_lines.append(line_to_add)
+        else:
+            if tipo_bloqueo == "internet":
+                unblock_internet()
+                internet_blocked = False
 
     # Escribir cambios en el archivo hosts
     with open(HOSTS_PATH, 'w') as file:
@@ -147,7 +230,7 @@ def background_host_updater():
         while not stop_thread:
             print("🔄 Actualizando archivo hosts...")
             update_hosts_based_on_rules()
-            time.sleep(60)
+            python_time.sleep(60)
     except Exception as e:
         print(f"❌ Error en el hilo de actualización: {e}")
 
