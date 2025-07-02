@@ -295,3 +295,19 @@ def get_active_rules():
         return []
     finally:
         conn.close()
+
+def get_all_blocked_domains():
+    conn = connect_db()
+    if not conn:
+        return []
+
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT url_dominio_bloqueado FROM paginas_bloqueadas_unicas;")
+                return [row[0] for row in cur.fetchall()]
+    except Exception as e:
+        print(f"❌ Error al obtener dominios bloqueados: {e}")
+        return []
+    finally:
+        conn.close()
