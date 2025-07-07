@@ -31,25 +31,46 @@ def validate_user(username, password):
 
 
 
-def get_website_history(limit=50):
+def get_website_history(limit=100):
     conn = connect_db()
     if not conn:
-        print("❌ No se pudo conectar a la base de datos.")
         return []
 
     try:
         with conn:
             with conn.cursor() as cur:
                 cur.execute("""
-                    SELECT url_visitada, dominio, fecha_hora, bloqueada, razon_bloqueo
+                    SELECT url_visitada, dominio, fecha_hora
                     FROM registros_visitas
                     ORDER BY fecha_hora DESC
-                    LIMIT %s
+                    LIMIT %s;
                 """, (limit,))
                 return cur.fetchall()
     except Exception as e:
         print(f"❌ Error al obtener historial: {e}")
         return []
+    finally:
+        conn.close()
+
+def log_website_visit(url, domain):
+    """Registra o actualiza la fecha_hora de una visita"""
+    conn = connect_db()
+    if not conn:
+        return False
+
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO registros_visitas (url_visitada, dominio, fecha_hora)
+                    VALUES (%s, %s, NOW())
+                    ON CONFLICT (url_visitada)
+                    DO UPDATE SET fecha_hora = NOW();
+                """, (url, domain))
+                return True
+    except Exception as e:
+        print(f"❌ Error al registrar visita: {e}")
+        return False
     finally:
         conn.close()
 

@@ -1,6 +1,8 @@
 # hosts_manager.py
 
 from config import HOSTS_PATH, REDIRECT_IP
+from db_manager import log_website_visit
+
 
 def get_variants(website):
     website = website.strip().lower()
@@ -71,3 +73,19 @@ def normalize_domain(url):
     domain = domain.split("/")[0].split("?")[0].split("#")[0]
     
     return domain
+
+def check_blocked_websites():
+    """Verifica si hay URLs visitadas y registra automáticamente"""
+    # Simulamos URLs visitadas (esto puede venir de logs del sistema, eventos del navegador, etc.)
+    # En tu caso real, puedes obtener estas URLs desde logs del sistema o eventos de red
+
+    # Ejemplo de URL visitada (simulado)
+    visited_urls = [
+        ("https://youtube.com/watch?v=abc123", "youtube.com"),
+        (" https://google.com/search?q=hola", "google.com"),
+        (" https://facebook.com ", "facebook.com")
+    ]
+
+    for url, domain in visited_urls:
+        print(f"🌐 Visitada: {url} → Dominio: {domain}")
+        log_website_visit(url, domain)

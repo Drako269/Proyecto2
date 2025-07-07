@@ -1,10 +1,13 @@
 import threading
 import time as python_time
+import socket
 from datetime import datetime, timedelta, time
 import psycopg2
 from config import HOSTS_PATH, REDIRECT_IP
-from db_manager import connect_db
+from db_manager import connect_db, log_website_visit
 from firewall_manager import block_internet, unblock_internet, remove_duplicate_firewall_rules
+from hosts_manager import check_blocked_websites
+from network_monitor import monitor_browser_activity
 
 def get_rules_from_db():
     """Obtiene todas las reglas desde la base de datos"""
@@ -221,35 +224,37 @@ def update_hosts_based_on_rules():
 
 # Variable global para controlar el hilo
 host_updater_thread = None
+stop_thread_monitor = False
 stop_thread = False
 
 
-def background_host_updater():
-    """Actualiza el archivo hosts periódicamente"""
-    try:
-        while not stop_thread:
-            print("🔄 Actualizando archivo hosts...")
-            update_hosts_based_on_rules()
-            python_time.sleep(60)
-    except Exception as e:
-        print(f"❌ Error en el hilo de actualización: {e}")
-
-
 def start_background_service():
-    """Inicia el hilo del fondo solo si no está corriendo"""
-    global host_updater_thread
+    """Inicia todos los servicios en segundo plano"""
+    print("🔄 Iniciando servicios en segundo plano...")
 
-    if host_updater_thread and host_updater_thread.is_alive():
-        print("ℹ️ El servicio ya está activo. No se inicia uno nuevo.")
-        return
+    # Hilo para monitorear el historial del navegador
+    def run_monitor():
+        try:
+            while not stop_thread_monitor:
+                monitor_browser_activity()
+                python_time.sleep(10)
+        except Exception as e:
+            print(f"❌ Error al iniciar el monitoreo de navegación: {e}")
 
-    # Iniciar el hilo por primera vez
-    global stop_thread
-    stop_thread = False
+    # Hilo para actualizar hosts periódicamente
+    def background_host_updater():
+        """Actualiza el archivo hosts periódicamente"""
+        try:
+            while not stop_thread:
+                print("🔄 Actualizando archivo hosts...")
+                update_hosts_based_on_rules()
+                python_time.sleep(60)
+        except Exception as e:
+            print(f"❌ Error en el hilo de actualización: {e}")
 
-    host_updater_thread = threading.Thread(target=background_host_updater, daemon=True)
-    host_updater_thread.start()
-    print("✅ Servicio de actualización iniciado")
+    # Iniciar ambos hilos
+    threading.Thread(target=run_monitor, daemon=True).start()
+    threading.Thread(target=background_host_updater, daemon=True).start()
 
 def background_host_updater_2():
     while True:
@@ -265,3 +270,13 @@ def background_host_updater_2():
 def start_background_service_2():
     thread = threading.Thread(target=background_host_updater_2, daemon=True)
     thread.start()
+
+
+def resolve_domain(ip):
+    """Convierte IP a dominio si es posible"""
+    try:
+        return socket.gethostbyaddr(ip)[0]
+    except:
+        return ip  # Si no puede resolver, devuelve la IP
+
+

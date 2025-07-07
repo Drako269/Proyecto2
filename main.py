@@ -3,6 +3,7 @@
 import tkinter as tk
 import traceback
 from background_service import start_background_service
+from network_monitor import monitor_browser_activity
 
 print("✅ Iniciando AppController...")
 
@@ -26,6 +27,7 @@ class AppController(tk.Tk):
 
             from menu_gui import MenuFrame
             self.show_frame(MenuFrame)
+
 
         except Exception as e:
             print("❌ Error en __init__:")

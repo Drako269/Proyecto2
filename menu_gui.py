@@ -6,6 +6,7 @@ from blocked_websites_gui import BlockedWebsitesFrame
 from schedule_gui import ScheduleFrame
 from history_gui import HistoryFrame
 from add_rule_gui import AddRuleFrame
+from manual_gui import ManualUsoFrame
 
 
 class MenuFrame(tk.Frame):
@@ -27,7 +28,7 @@ class MenuFrame(tk.Frame):
         # Título del aplicativo
         tk.Label(
             self.title_frame,
-            text="Control Parental",
+            text="SafeWeb",
             font=("Arial", 24, "bold"),
             bg="#B3C1DC",
             fg="#4C587D"
@@ -62,6 +63,7 @@ class MenuFrame(tk.Frame):
         create_styled_button(buttons_frame, "🔒 Páginas Bloqueadas", BlockedWebsitesFrame)
         create_styled_button(buttons_frame, "📅 Cronograma de Uso", ScheduleFrame)
         create_styled_button(buttons_frame, "📜 Historial de Búsquedas", HistoryFrame)
+        create_styled_button(buttons_frame, "Manual de Uso", ManualUsoFrame)
 
         # Botón salir
         exit_btn = tk.Button(
