@@ -23,6 +23,20 @@ class AddRuleFrame(tk.Frame):
         top_frame = tk.Frame(self, bg="#B3C1DC")
         top_frame.pack(pady=30)
 
+        # Botón de ayuda (interrogación)
+        self.help_button = tk.Button(
+            top_frame,
+            text="?",
+            font=("Arial", 14, "bold"),
+            bg="#788AB2",
+            fg="black",
+            width=2,
+            height=1,
+            relief="flat",
+            command=self.show_help_instructions
+        )
+        self.help_button.pack(side="right", anchor="ne")
+
         # Título del formulario
         title_label = tk.Label(
             top_frame,
@@ -32,6 +46,8 @@ class AddRuleFrame(tk.Frame):
             fg="#4C587D"
         )
         title_label.pack()
+
+
 
         separator = ttk.Separator(top_frame, orient="horizontal")
         separator.pack(fill="x", pady=(10, 20))
@@ -91,6 +107,62 @@ class AddRuleFrame(tk.Frame):
         from menu_gui import MenuFrame
         self.controller.show_frame(MenuFrame)
 
+    def show_help_instructions(self):
+        """Muestra instrucciones de los campos"""
+        help_text = """
+        🛠 Instrucciones para crear una regla:
+        
+        • Tipo de Bloqueo: Selecciona si quieres bloquear una página específica o todo Internet.
+
+        • Fecha Inicio / Fin: Define desde cuándo y hasta cuándo aplica la regla.
+
+        • Hora Inicio / Fin: Establece horario específico. Ejemplo: 08:00 → a las 8 AM. 
+            ➤ Dejar "00:00 - 00:00" para que se aplique todo el dia (00:00 - 23:59)
+
+        • Días de la Semana: Marca los días en los que se aplicará la regla.
+            ➤ Si se deja este parametro en blanco, la regla se aplicará toda la semana
+
+        • Dominio: Escribe solo el dominio principal. Ejemplo: youtube.com
+            ➤ No aplica si vas a bloquear todo el internet
+        
+        Notas:
+        ➤ Si no defines fechas ni horas, la regla aplica siempre.
+        ➤ Las horas deben estar en formato HH:MM (ej: 08:30, 22:45)
+        """
+
+        # Crear ventana emergente
+        help_window = tk.Toplevel(self)
+        help_window.title("Ayuda - Campos de Regla")
+        help_window.geometry("600x350")
+        help_window.configure(bg="#B3C1DC")
+
+        # Marco interno con scroll
+        frame = tk.Frame(help_window, bg="#B3C1DC")
+        frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # Texto informativo
+        help_label = tk.Text(frame, wrap="word", bg="white", fg="#333", font=("Arial", 10), bd=0)
+        help_label.insert("1.0", help_text.strip())
+        help_label.config(state="disabled")  # Solo lectura
+        help_label.pack(side="left", fill="both", expand=True)
+
+        # Scrollbar opcional
+        scrollbar = ttk.Scrollbar(frame, orient="vertical", command=help_label.yview)
+        help_label.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+
+        # Botón cerrar
+        close_button = tk.Button(
+            help_window,
+            text="Cerrar",
+            bg="#E63946",
+            fg="white",
+            font=("Arial", 10, "bold"),
+            relief="flat",
+            command=help_window.destroy
+        )
+        close_button.pack(pady=10)
+
     def show_fields(self, event=None):
         selected_type = self.rule_type_var.get()
 
@@ -116,9 +188,13 @@ class AddRuleFrame(tk.Frame):
             background='darkblue',
             foreground='white',
             borderwidth=2,
-            date_pattern='yyyy-mm-dd'
+            date_pattern='yyyy-mm-dd',
+            selectmode='day',
+            showweeknumbers=False,
+            showothermonthdays=False
         )
         self.date_start.grid(row=0, column=1, padx=5, pady=5)
+        self.date_start.delete(0, "end")  
 
         tk.Label(self.fields_frame, text="Fecha Fin:", bg="#B3C1DC", font=("Arial", 10)).grid(row=1, column=0, sticky="w")
         self.date_end = DateEntry(
@@ -127,9 +203,12 @@ class AddRuleFrame(tk.Frame):
             background='darkblue',
             foreground='white',
             borderwidth=2,
-            date_pattern='yyyy-mm-dd'
+            date_pattern='yyyy-mm-dd',
+            showweeknumbers=False,
+            showothermonthdays=False
         )
         self.date_end.grid(row=1, column=1, padx=5, pady=5)
+        self.date_end.delete(0, "end")
 
         # Campo de Hora Inicio (HH:MM) - Spinboxes
         tk.Label(self.fields_frame, text="Hora Inicio (HH:MM):", bg="#B3C1DC", font=("Arial", 10)).grid(row=2, column=0, sticky="w")
@@ -206,19 +285,53 @@ class AddRuleFrame(tk.Frame):
             messagebox.showwarning("Advertencia", "Por favor selecciona un tipo de bloqueo.")
             return
 
-        # Obtener valores comunes
-        start_date = self.date_start.get() or None
-        end_date = self.date_end.get() or None
+        # Obtener fechas opcionalmente vacías
+        try:
+            start_date = self.date_start.get_date().strftime("%Y-%m-%d") if self.date_start.get_date() else None
+        except:
+            start_date = None
+
+        try:
+            end_date = self.date_end.get_date().strftime("%Y-%m-%d") if self.date_end.get_date() else None
+        except:
+            end_date = None
+
+        # Obtener horas normalmente
         start_time = f"{int(self.hour_start.get()):02d}:{int(self.minute_start.get()):02d}"
         end_time = f"{int(self.hour_end.get()):02d}:{int(self.minute_end.get()):02d}"
 
-        # Validar formato HH:MM
+        try:
+            start_hour = int(self.hour_start.get())
+            start_minute = int(self.minute_start.get())
+            start_time = f"{start_hour:02d}:{start_minute:02d}"
+        except:
+            start_time = None  # Si no se pudo leer, dejarlo vacío
+
+        try:
+            end_hour = int(self.hour_end.get())
+            end_minute = int(self.minute_end.get())
+            end_time = f"{end_hour:02d}:{end_minute:02d}"
+        except:
+            end_time = None
+
+        # Limpiar horas si son iguales
+        if start_time and end_time and start_time == end_time:
+            start_time = None
+            end_time = None
+
+        # Validar formato HH:MM solo si hay hora definida
         if start_time and not self._is_valid_time(start_time):
             messagebox.showerror("Error", "Formato inválido en Hora Inicio. Usa HH:MM")
             return
         if end_time and not self._is_valid_time(end_time):
             messagebox.showerror("Error", "Formato inválido en Hora Fin. Usa HH:MM")
             return
+        
+        # Validar que Hora Inicio no sea después de Hora Fin
+        if start_time and end_time:
+            if not self._is_start_before_end(start_time, end_time):
+                messagebox.showwarning("Advertencia", "La Hora Inicio no puede ser posterior a la Hora Fin.")
+                return
 
         # Días seleccionados
         days_selected = [day for day, var in self.check_vars.items() if var.get()]
@@ -240,9 +353,6 @@ class AddRuleFrame(tk.Frame):
                 messagebox.showerror("Error", f"No se pudo registrar {website} en la base de datos.")
                 return
 
-            if rule_exists_for_page(page_id):
-                messagebox.showwarning("Advertencia", "Esta regla ya fue creada anteriormente.")
-                return
 
             success = create_block_rule(
                 page_id=page_id,
@@ -266,10 +376,6 @@ class AddRuleFrame(tk.Frame):
                 messagebox.showerror("Error", "No se pudo crear la regla para Internet.")
                 return
 
-            if rule_exists_for_page(page_id):
-                messagebox.showwarning("Advertencia", "Ya existe una regla idéntica para Internet.")
-                return
-
             success = create_block_rule(
                 page_id=page_id,
                 rule_type=rule_type,
@@ -284,6 +390,20 @@ class AddRuleFrame(tk.Frame):
                 messagebox.showinfo("Éxito", "Regla creada para Bloquear Internet")
             else:
                 messagebox.showerror("Error", "No se pudo crear la regla.")
+
+    def _is_start_before_end(self, start_time, end_time):
+        """Verifica que la hora de inicio no sea mayor que la de fin"""
+        if not start_time or not end_time:
+            return True  # Si alguna es None → se considera válida (sin horario definido)
+
+        try:
+            sh, sm = map(int, start_time.split(':'))
+            eh, em = map(int, end_time.split(':'))
+            start_minutes = sh * 60 + sm
+            end_minutes = eh * 60 + em
+            return start_minutes <= end_minutes
+        except:
+            return False
 
     def _is_valid_time(self, time_str):
         """Valida que el tiempo esté en formato HH:MM"""

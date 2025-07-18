@@ -64,6 +64,11 @@ def update_hosts_based_on_rules():
         hora_inicio = rule[6]  # Esto puede ser None o un objeto datetime.time
         hora_fin = rule[7]
 
+        # Eliminar regla del firewall
+        if not active and tipo_bloqueo == "internet":
+            unblock_internet()
+            continue
+
         # Si no está activa → saltar
         if not active:
             continue

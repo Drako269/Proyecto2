@@ -3,7 +3,6 @@
 import tkinter as tk
 from tkinter import ttk
 from blocked_websites_gui import BlockedWebsitesFrame
-from schedule_gui import ScheduleFrame
 from history_gui import HistoryFrame
 from add_rule_gui import AddRuleFrame
 from manual_gui import ManualUsoFrame
@@ -29,7 +28,7 @@ class MenuFrame(tk.Frame):
         tk.Label(
             self.title_frame,
             text="SafeWeb",
-            font=("Arial", 24, "bold"),
+            font=("Arial", 28, "bold"),
             bg="#B3C1DC",
             fg="#4C587D"
         ).pack()
@@ -50,7 +49,7 @@ class MenuFrame(tk.Frame):
                 width=30,
                 bg="#788AB2",
                 fg="white",
-                font=("Arial", 12, "bold"),
+                font=("Arial", 14, "bold"),
                 relief="flat",
                 padx=10,
                 pady=6,
@@ -61,9 +60,8 @@ class MenuFrame(tk.Frame):
         # Botones del menú
         create_styled_button(buttons_frame, "➕ Agregar Regla de Bloqueo", AddRuleFrame)
         create_styled_button(buttons_frame, "🔒 Páginas Bloqueadas", BlockedWebsitesFrame)
-        create_styled_button(buttons_frame, "📅 Cronograma de Uso", ScheduleFrame)
         create_styled_button(buttons_frame, "📜 Historial de Búsquedas", HistoryFrame)
-        create_styled_button(buttons_frame, "Manual de Uso", ManualUsoFrame)
+        create_styled_button(buttons_frame, "📋Manual de Uso", ManualUsoFrame)
 
         # Botón salir
         exit_btn = tk.Button(
@@ -72,7 +70,7 @@ class MenuFrame(tk.Frame):
             width=30,
             bg="#E63946",
             fg="white",
-            font=("Arial", 12, "bold"),
+            font=("Arial", 14, "bold"),
             relief="flat",
             padx=10,
             pady=6,
