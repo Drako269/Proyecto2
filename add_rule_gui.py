@@ -23,20 +23,6 @@ class AddRuleFrame(tk.Frame):
         top_frame = tk.Frame(self, bg="#B3C1DC")
         top_frame.pack(pady=30)
 
-        # Botón de ayuda (interrogación)
-        self.help_button = tk.Button(
-            top_frame,
-            text="?",
-            font=("Arial", 14, "bold"),
-            bg="#788AB2",
-            fg="black",
-            width=2,
-            height=1,
-            relief="flat",
-            command=self.show_help_instructions
-        )
-        self.help_button.pack(side="right", anchor="ne")
-
         # Título del formulario
         title_label = tk.Label(
             top_frame,
@@ -55,6 +41,18 @@ class AddRuleFrame(tk.Frame):
         # Marco central para formularios
         main_frame = tk.Frame(self, bg="#B3C1DC")
         main_frame.pack(expand=True, fill="both", padx=20)
+
+        # Botón de ayuda (interrogación)
+        self.help_button = tk.Button(
+            main_frame,
+            text="Ayuda",
+            font=("Arial", 14, "bold"),
+            bg="#788AB2",
+            fg="black",
+            relief="flat",
+            command=self.show_help_instructions
+        )
+        self.help_button.pack(side="top", anchor="ne")
 
         # Variable del tipo de bloqueo
         self.rule_type_var = tk.StringVar()

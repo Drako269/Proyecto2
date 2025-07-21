@@ -234,7 +234,7 @@ def get_all_block_rules():
                         rb.id_regla
                     FROM reglas_bloqueo rb
                     JOIN paginas_bloqueadas_unicas pb ON rb.id_pagina_bloqueada_fk = pb.id_pagina_bloqueada
-                    ORDER BY pb.url_dominio_bloqueado;
+                    ORDER BY rb.id_regla DESC;
                 """)
                 return cur.fetchall()
     except Exception as e:
@@ -244,7 +244,8 @@ def get_all_block_rules():
         conn.close()
 
 
-def toggle_rule_active_status(rule_id, active=True):
+def toggle_rule_active_status(rule_id, new_status):
+    """Actualiza el estado activo de una regla"""
     conn = connect_db()
     if not conn:
         return False
@@ -255,11 +256,11 @@ def toggle_rule_active_status(rule_id, active=True):
                 cur.execute("""
                     UPDATE reglas_bloqueo
                     SET activo = %s
-                    WHERE id_regla = %s
-                """, (active, rule_id))
+                    WHERE id_regla = %s;
+                """, (new_status, rule_id))
                 return cur.rowcount > 0
     except Exception as e:
-        print(f"❌ Error al actualizar estado de regla: {e}")
+        print(f"❌ Error al actualizar estado de la regla: {e}")
         return False
     finally:
         conn.close()
@@ -330,5 +331,51 @@ def get_all_blocked_domains():
     except Exception as e:
         print(f"❌ Error al obtener dominios bloqueados: {e}")
         return []
+    finally:
+        conn.close()
+
+def delete_block_rule(rule_id):
+    """Elimina una regla de bloqueo por ID"""
+    conn = connect_db()
+    if not conn:
+        return False
+
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM reglas_bloqueo WHERE id_regla = %s;", (rule_id,))
+                return cur.rowcount > 0
+    except Exception as e:
+        print(f"❌ Error al eliminar regla: {e}")
+        return False
+    finally:
+        conn.close()
+
+def update_block_rule(rule_id, page_id, rule_type, fecha_inicio=None, fecha_fin=None,
+                      dias_semana=None, hora_inicio=None, hora_fin=None):
+    """Actualiza una regla existente"""
+    conn = connect_db()
+    if not conn:
+        return False
+
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE reglas_bloqueo SET
+                        id_pagina_bloqueada_fk = %s,
+                        tipo_bloqueo = %s,
+                        fecha_inicio = %s,
+                        fecha_fin = %s,
+                        dias_semana = %s,
+                        hora_inicio = %s,
+                        hora_fin = %s
+                    WHERE id_regla = %s;
+                """, (page_id, rule_type, fecha_inicio, fecha_fin, dias_semana,
+                      hora_inicio, hora_fin, rule_id))
+                return cur.rowcount > 0
+    except Exception as e:
+        print(f"❌ Error al actualizar regla: {e}")
+        return False
     finally:
         conn.close()
