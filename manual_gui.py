@@ -60,8 +60,6 @@ class ManualUsoFrame(tk.Frame):
      • ➕ Agregar Regla de Bloqueo
      • 🚫 Bloquear Página
      • 🔒 Páginas Bloqueadas
-     • 🌐 Bloquear Internet
-     • 📅 Cronograma de Uso
      • 📜 Historial de Búsquedas
      • 📚 Manual de Uso (estás aquí)
 

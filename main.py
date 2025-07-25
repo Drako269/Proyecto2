@@ -43,6 +43,7 @@ class AppController(tk.Tk):
                 from blocked_websites_gui import BlockedWebsitesFrame
                 from block_internet_gui import BlockInternetFrame
                 from schedule_gui import ScheduleFrame
+                from add_rule_edit_gui import AddRuleFrameEdit
                 from menu_gui import MenuFrame  # Importamos aquí para evitar ciclos
 
                 mapping = {
@@ -51,6 +52,7 @@ class AppController(tk.Tk):
                     'BlockedWebsitesFrame': BlockedWebsitesFrame,
                     'BlockInternetFrame': BlockInternetFrame,
                     'ScheduleFrame': ScheduleFrame,
+                    'AddRuleFrameEdit': AddRuleFrameEdit,
                 }
 
                 # Si se pasa como cadena, obtenemos la clase desde el mapeo

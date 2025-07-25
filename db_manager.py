@@ -3,6 +3,7 @@
 import psycopg2
 from config import DB_CONFIG
 from tkinter import messagebox
+import hashlib
 
 def connect_db():
     try:
@@ -58,15 +59,18 @@ def log_website_visit(url, domain):
     if not conn:
         return False
 
+    # Generar hash MD5 de la URL
+    url_hash = hashlib.md5(url.encode('utf-8')).hexdigest()
+
     try:
         with conn:
             with conn.cursor() as cur:
                 cur.execute("""
-                    INSERT INTO registros_visitas (url_visitada, dominio, fecha_hora)
-                    VALUES (%s, %s, NOW())
-                    ON CONFLICT (url_visitada)
-                    DO UPDATE SET fecha_hora = NOW();
-                """, (url, domain))
+                    INSERT INTO registros_visitas (url_visitada, dominio, url_hash, fecha_hora)
+                    VALUES (%s, %s, %s, NOW())
+                    ON CONFLICT (url_hash) DO
+                    UPDATE SET fecha_hora = NOW();
+                """, (url, domain, url_hash))
                 return True
     except Exception as e:
         print(f"❌ Error al registrar visita: {e}")

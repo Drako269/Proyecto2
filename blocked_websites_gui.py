@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, BooleanVar
 from db_manager import get_all_block_rules, toggle_rule_active_status
 from background_service import start_background_service
+from functools import partial
 
 
 class BlockedWebsitesFrame(tk.Frame):
@@ -148,21 +149,6 @@ class BlockedWebsitesFrame(tk.Frame):
             )
             toggle_btn.pack(pady=2)
 
-            # Botón: Editar
-            def make_edit_command(r=rule):
-                return lambda: self.edit_rule(r)
-
-            edit_btn = tk.Button(
-                actions_frame,
-                text="Editar",
-                bg="#788AB2",
-                fg="white",
-                font=("Arial", 10, "bold"),
-                relief="flat",
-                width=10,
-                command=make_edit_command(rule)
-            )
-            edit_btn.pack(pady=2)
 
             # Botón: Eliminar
             def make_delete_command(rid=id_regla):
@@ -195,11 +181,6 @@ class BlockedWebsitesFrame(tk.Frame):
         from menu_gui import MenuFrame
         self.controller.show_frame(MenuFrame)
 
-    def edit_rule(self, rule_data):
-        """Abre un formulario para editar la regla (puedes redirigir a AddRuleFrame o crear uno nuevo)"""
-        messagebox.showwarning("Editar Regla", f"Funcionalidad de edición no implementada.\nDominio: {rule_data[1]}")
-        # Aquí puedes abrir un popup o redirigir a una vista de edición
-        # Por ahora, mostramos solo un mensaje informativo
 
     def delete_rule(self, rule_id):
         """Pregunta confirmación y elimina la regla"""
