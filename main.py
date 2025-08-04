@@ -33,6 +33,14 @@ class AppController(tk.Tk):
             print("❌ Error en __init__:")
             print(traceback.format_exc())
 
+    def show_first_user(self):
+        """Muestra la vista de registro inicial"""
+        from first_user_gui import FirstUserFrame
+        frame = FirstUserFrame(self.container, self)
+        self.frames[FirstUserFrame] = frame
+        frame.grid(row=0, column=0, sticky="nsew")
+        self.show_frame(FirstUserFrame)
+
     def show_frame(self, frame_class):
         """Muestra una vista (frame) específica"""
         try:
@@ -45,6 +53,7 @@ class AppController(tk.Tk):
                 from schedule_gui import ScheduleFrame
                 from add_rule_edit_gui import AddRuleFrameEdit
                 from menu_gui import MenuFrame  # Importamos aquí para evitar ciclos
+                from first_user_gui import FirstUserFrame
 
                 mapping = {
                     'MenuFrame': MenuFrame,
@@ -53,6 +62,7 @@ class AppController(tk.Tk):
                     'BlockInternetFrame': BlockInternetFrame,
                     'ScheduleFrame': ScheduleFrame,
                     'AddRuleFrameEdit': AddRuleFrameEdit,
+                    'FirstUserFrame': FirstUserFrame,
                 }
 
                 # Si se pasa como cadena, obtenemos la clase desde el mapeo
@@ -76,8 +86,18 @@ class AppController(tk.Tk):
 # === INICIO DEL PROGRAMA ===
 if __name__ == "__main__":
     import auth_gui  # Solo importamos aquí para evitar ciclos
+    import first_user_gui
 
     start_background_service()
     root = tk.Tk()
-    login_app = auth_gui.LoginApp(root)
+
+    # Verificar si hay usuarios
+    from db_manager import has_users
+    if has_users():
+        # Ya hay usuarios → mostrar login
+        login_app = auth_gui.LoginApp(root)
+    else:
+        # No hay usuarios → mostrar registro inicial
+        register_app = first_user_gui.FirstUserFrame(root)
+
     root.mainloop()

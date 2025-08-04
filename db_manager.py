@@ -383,3 +383,40 @@ def update_block_rule(rule_id, page_id, rule_type, fecha_inicio=None, fecha_fin=
         return False
     finally:
         conn.close()
+
+def has_users():
+    """Verifica si hay al menos un usuario registrado"""
+    conn = connect_db()
+    if not conn:
+        return False
+
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1 FROM users LIMIT 1;")
+                return cur.fetchone() is not None
+    except Exception as e:
+        print(f"❌ Error al verificar usuarios: {e}")
+        return False
+    finally:
+        conn.close()
+
+def create_user(username, password):
+    """Crea un nuevo usuario"""
+    conn = connect_db()
+    if not conn:
+        return False
+
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO users (username, password)
+                    VALUES (%s, %s);
+                """, (username, password))
+                return True
+    except Exception as e:
+        print(f"❌ Error al crear usuario: {e}")
+        return False
+    finally:
+        conn.close()
